@@ -1,26 +1,33 @@
 package controllers
 
 import (
-	"github.com/gin-gonic/gin"
 	"server/initializers"
 	"server/models"
+
+	"github.com/gin-gonic/gin"
 )
 
 func PostsCreate(c *gin.Context) {
 	// Get data off request body
 	var body struct {
-		Body  string
-		Title string
+		Amount   int
+		Types    string
+		Category string
+		Dates    string
+		Note     string
 	}
 
 	c.Bind(&body)
 
 	// Create post
-	post := models.Post{Title: body.Title, Body: body.Body}
+	post := models.Post{Amount: body.Amount, Types: body.Types, Category: body.Category, Dates: body.Dates, Note: body.Note}
 	result := initializers.DB.Create(&post)
 
 	if result.Error != nil {
-		c.Status(400)
+		c.JSON(400, gin.H{
+			"error": result.Error.Error(),
+		})
+
 		return
 	}
 
@@ -61,8 +68,11 @@ func PostsUpdate(c *gin.Context) {
 
 	// Get the data off request body
 	var body struct {
-		Body  string
-		Title string
+		Amount   int
+		Types    string
+		Category string
+		Dates    string
+		Note     string
 	}
 
 	c.Bind(&body)
@@ -73,8 +83,11 @@ func PostsUpdate(c *gin.Context) {
 
 	// Update it
 	initializers.DB.Model(&post).Updates(models.Post{
-		Title: body.Title,
-		Body:  body.Body,
+		Amount:   body.Amount,
+		Types:    body.Types,
+		Category: body.Category,
+		Dates:    body.Dates,
+		Note:     body.Note,
 	})
 
 	// Respont with it
@@ -88,8 +101,48 @@ func PostsDelete(c *gin.Context) {
 	id := c.Param("id")
 
 	// Delete the posts
-	initializers.DB.Delete(&models.Post{}, id)
+	result := initializers.DB.Delete(&models.Post{}, id)
+
+	// Check if it was found
+	if result.RowsAffected == 0 {
+		c.JSON(404, gin.H{
+			"error": "Post not found",
+		})
+
+		return
+	}
+
+	// Check for errors
+	if result.Error != nil {
+		c.JSON(400, gin.H{
+			"error": result.Error.Error(),
+		})
+
+		return
+	}
 
 	// Respond with it
-	c.Status(200)
+	c.JSON(200, gin.H{
+		"message": "Deleted post with id: " + id,
+	})
+}
+
+// This is the function to sort by dates
+func PostsIndexByType(c *gin.Context) {
+	// Get the posts
+	var posts []models.Post
+	initializers.DB.Find(&posts)
+
+	// Create a map to store posts by date
+	postsByDate := make(map[string][]models.Post)
+
+	// Group posts by date
+	for _, post := range posts {
+		postsByDate[post.Dates] = append(postsByDate[post.Dates], post)
+	}
+
+	// Respond with the posts grouped by date
+	c.JSON(200, gin.H{
+		"postsByDate": postsByDate,
+	})
 }
