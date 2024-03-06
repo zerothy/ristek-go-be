@@ -141,8 +141,20 @@ func PostsIndexByType(c *gin.Context) {
 		postsByDate[post.Dates] = append(postsByDate[post.Dates], post)
 	}
 
-	// Respond with the posts grouped by date
+	// Sort the keys in descending order
+	var keys []string
+	for key := range postsByDate {
+		keys = append(keys, key)
+	}
+
+	// Create a new map to store posts by date in descending order
+	postsByDateDescending := make(map[string][]models.Post)
+	for _, key := range keys {
+		postsByDateDescending[key] = postsByDate[key]
+	}
+
+	// Respond with the posts grouped by date in descending order
 	c.JSON(200, gin.H{
-		"postsByDate": postsByDate,
+		"postsByDate": postsByDateDescending,
 	})
 }
